@@ -257,32 +257,83 @@ async function saveEntry() {
 // ─── BANNER ───────────────────────────────────────────────────
 
 function renderBanner() {
-  const today = todayStr();
-  const dow   = new Date(today + 'T12:00:00').getDay();
-  const hol   = isHol(today);
-  const el    = document.getElementById('day-banner');
-  el.className = 'day-banner visible';
+  const today    = todayStr();
+  const todayDow = new Date(today + 'T12:00:00').getDay();
+  const hol      = isHol(today);
+  const el       = document.getElementById('day-banner');
+  el.className   = 'day-banner visible';
+
+  // Tomorrow's date and day-of-week — for calculating tonight's required bedtime
+  const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowStr  = tomorrowDate.toISOString().slice(0, 10);
+  const tomorrowDow  = tomorrowDate.getDay();
+  const tomorrowHol  = isHol(tomorrowStr);
+  const tomorrowSch  = SCH[tomorrowDow]; // null if tomorrow is a weekend
+
   if (hol) {
     const h = holidays.find(h => today >= h.start && today <= h.end);
-    el.classList.add('holiday');
-    el.innerHTML = `<div class="bn-title">${h ? h.label : 'Day off'} — no school</div><div class="bn-detail">Relaxed timing applies. Try not to sleep in more than ~1.5h past your usual wake time.</div>`;
+    // Even on a holiday, show tomorrow's bedtime if tomorrow is a school day
+    if (tomorrowSch && !tomorrowHol) {
+      const now = new Date(), nm = now.getHours() * 60 + now.getMinutes();
+      const diff = t2m(tomorrowSch.bedBy) - nm;
+      const hn = tomorrowSch.hair ? ' · hair wash day tomorrow' : '';
+      let msg = '';
+      if (diff <= 0)       msg = 'You should already be in bed to get 9h before tomorrow.';
+      else if (diff <= 45) msg = `Bed in ${diff} min to hit 9h before tomorrow (${tomorrowSch.name}).`;
+      else if (diff <= 90) msg = `Bed by ${tomorrowSch.bedBy} for 9h — ${tomorrowSch.name} alarm is ${tomorrowSch.alarm}.`;
+      else                 msg = `Aim to be in bed by ${tomorrowSch.bedBy} tonight — ${tomorrowSch.name} alarm is ${tomorrowSch.alarm}${hn}.`;
+      el.classList.add(diff <= 45 ? 'urgent' : diff <= 90 ? 'warning' : 'holiday');
+      el.innerHTML = `<div class="bn-title">${h ? h.label : 'Day off'} — no school today</div><div class="bn-detail">${msg}</div>`;
+    } else {
+      el.classList.add('holiday');
+      el.innerHTML = `<div class="bn-title">${h ? h.label : 'Day off'} — no school</div><div class="bn-detail">Relaxed timing applies. Try not to sleep in more than ~1.5h past your usual wake time.</div>`;
+    }
     return;
   }
-  const s = SCH[dow];
-  if (!s) {
-    el.classList.add('ok');
-    el.innerHTML = `<div class="bn-title">Weekend — no school</div><div class="bn-detail">Relaxed timing applies. Up to ~1.5h sleep-in is fine (Phillips et al., 2017).</div>`;
+
+  const todaySch = SCH[todayDow];
+  if (!todaySch) {
+    // Weekend today — show tomorrow's bedtime if tomorrow is a school day
+    if (tomorrowSch && !tomorrowHol) {
+      const now = new Date(), nm = now.getHours() * 60 + now.getMinutes();
+      const diff = t2m(tomorrowSch.bedBy) - nm;
+      const hn = tomorrowSch.hair ? ' · hair wash day tomorrow' : '';
+      let msg = '', urg = 'ok';
+      if (diff <= 0)       { urg = 'urgent';  msg = 'You should already be in bed to get 9h before tomorrow.'; }
+      else if (diff <= 45) { urg = 'urgent';  msg = `Bed in ${diff} min to hit 9h before ${tomorrowSch.name}.`; }
+      else if (diff <= 90) { urg = 'warning'; msg = `Bed by ${tomorrowSch.bedBy} for 9h — ${tomorrowSch.name} alarm is ${tomorrowSch.alarm}.`; }
+      else                 { msg = `Tomorrow is ${tomorrowSch.name} — aim to be in bed by ${tomorrowSch.bedBy} for 9h${hn}.`; }
+      el.classList.add(urg);
+      el.innerHTML = `<div class="bn-title">Weekend — no school today</div><div class="bn-detail">${msg}</div>`;
+    } else {
+      el.classList.add('ok');
+      el.innerHTML = `<div class="bn-title">Weekend — no school</div><div class="bn-detail">Relaxed timing applies. Up to ~1.5h sleep-in is fine (Phillips et al., 2017).</div>`;
+    }
     return;
   }
+
+  // School day today — show today's info but base bedtime on TOMORROW's alarm
   const now = new Date(), nm = now.getHours() * 60 + now.getMinutes();
-  const bm = t2m(s.bedBy), diff = bm - nm;
-  const hn = s.hair ? ' · hair wash day' : '';
-  let msg = '';
-  if (diff <= 0)       { el.classList.add('urgent');  msg = 'You should already be in bed to get 9h before tomorrow.'; }
-  else if (diff <= 45) { el.classList.add('urgent');  msg = `Bed in ${diff} min to hit 9h.`; }
-  else if (diff <= 90) { el.classList.add('warning'); msg = `Bed by ${s.bedBy} for 9h — ${diff} min from now.`; }
-  else                 { el.classList.add('ok');      msg = `Aim to be in bed by ${s.bedBy} tonight for 9h.`; }
-  el.innerHTML = `<div class="bn-title">${s.name} · alarm ${s.alarm} · leave ${s.leave}${hn}</div><div class="bn-detail">${msg}</div>`;
+  let bedBy, alarmInfo, hn = '';
+  if (tomorrowSch && !tomorrowHol) {
+    bedBy     = tomorrowSch.bedBy;
+    alarmInfo = `tomorrow's alarm ${tomorrowSch.alarm}`;
+    hn        = tomorrowSch.hair ? ' · hair wash tomorrow' : '';
+  } else {
+    // Tomorrow is weekend/holiday — relaxed, still suggest a reasonable bedtime
+    bedBy     = '23:30';
+    alarmInfo = 'no school tomorrow';
+    hn        = '';
+  }
+  const diff = t2m(bedBy) - nm;
+  const todayHn = todaySch.hair ? ' · hair wash day' : '';
+  let msg = '', urg = 'ok';
+  if (diff <= 0)       { urg = 'urgent';  msg = `You should already be in bed to get 9h (${alarmInfo}${hn}).`; }
+  else if (diff <= 45) { urg = 'urgent';  msg = `Bed in ${diff} min to hit 9h — ${alarmInfo}.`; }
+  else if (diff <= 90) { urg = 'warning'; msg = `Bed by ${bedBy} for 9h — ${alarmInfo}${hn}.`; }
+  else                 { msg = `Aim to be in bed by ${bedBy} tonight for 9h — ${alarmInfo}${hn}.`; }
+  el.classList.add(urg);
+  el.innerHTML = `<div class="bn-title">${todaySch.name} · alarm ${todaySch.alarm} · leave ${todaySch.leave}${todayHn}</div><div class="bn-detail">${msg}</div>`;
 }
 
 // ─── SCHEDULE ─────────────────────────────────────────────────
