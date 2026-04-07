@@ -6,25 +6,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Restlog">
-<meta name="theme-color" content="#0a0a0f">
+<meta name="theme-color" content="#07070e">
 <link rel="manifest" href="manifest.json">
 <title>Restlog</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<!-- AUTH SCREEN -->
+<!-- AUTH -->
 <div id="auth-screen" class="screen active">
   <div class="auth-wrap">
     <div class="brand">
       <div class="brand-icon">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <path d="M14 3C14 3 6 8 6 15C6 19.4 9.6 23 14 23C18.4 23 22 19.4 22 15C22 8 14 3 14 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-          <path d="M14 23V25M10 25H18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M10 15C10 15 11 12 14 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+          <path d="M14 3C14 3 6 8 6 15C6 19.4 9.6 23 14 23C18.4 23 22 19.4 22 15C22 8 14 3 14 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M14 23V25M10 25H18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M10 15C10 15 11 12 14 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
         </svg>
       </div>
       <span class="brand-name">Restlog</span>
@@ -32,15 +29,9 @@
     <div class="auth-card">
       <div id="auth-login-view">
         <h1 class="auth-title">Welcome back</h1>
-        <p class="auth-sub">Sign in to your sleep journal</p>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-        </div>
+        <p class="auth-sub">Your sleep journal</p>
+        <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com" autocomplete="email"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
         <div id="auth-error" class="auth-error" style="display:none"></div>
         <button class="btn-primary" onclick="handleLogin()">Sign in</button>
         <p class="auth-switch">No account? <a href="#" onclick="showView('signup')">Create one</a></p>
@@ -48,14 +39,8 @@
       <div id="auth-signup-view" style="display:none">
         <h1 class="auth-title">Create account</h1>
         <p class="auth-sub">Start tracking your sleep</p>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email">
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password">
-        </div>
+        <div class="form-group"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password"></div>
         <div id="signup-error" class="auth-error" style="display:none"></div>
         <button class="btn-primary" onclick="handleSignup()">Create account</button>
         <p class="auth-switch">Already have one? <a href="#" onclick="showView('login')">Sign in</a></p>
@@ -64,17 +49,17 @@
   </div>
 </div>
 
-<!-- APP SCREEN -->
+<!-- APP -->
 <div id="app-screen" class="screen">
 
   <header class="app-header">
     <div class="header-brand">
-      <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
-        <path d="M14 3C14 3 6 8 6 15C6 19.4 9.6 23 14 23C18.4 23 22 19.4 22 15C22 8 14 3 14 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-        <path d="M14 23V25M10 25H18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <path d="M10 15C10 15 11 12 14 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <svg width="17" height="17" viewBox="0 0 28 28" fill="none">
+        <path d="M14 3C14 3 6 8 6 15C6 19.4 9.6 23 14 23C18.4 23 22 19.4 22 15C22 8 14 3 14 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M14 23V25M10 25H18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M10 15C10 15 11 12 14 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
       </svg>
-      <span>Restlog</span>
+      Restlog
     </div>
     <div id="today-pill" class="today-pill"></div>
     <button class="signout-btn" onclick="handleSignout()">Sign out</button>
@@ -83,42 +68,36 @@
   <div id="day-banner" class="day-banner"></div>
 
   <nav class="tab-nav">
-    <button class="nav-btn active" data-tab="log" onclick="switchTab('log')">Log</button>
-    <button class="nav-btn" data-tab="history" onclick="switchTab('history')">History</button>
-    <button class="nav-btn" data-tab="stats" onclick="switchTab('stats')">Stats</button>
-    <button class="nav-btn" data-tab="schedule" onclick="switchTab('schedule')">Schedule</button>
-    <button class="nav-btn" data-tab="daysoff" onclick="switchTab('daysoff')">Days off</button>
-    <button class="nav-btn" data-tab="backup" onclick="switchTab('backup')">Backup</button>
+    <button class="nav-btn active" data-tab="log"      onclick="switchTab('log')">Log</button>
+    <button class="nav-btn"        data-tab="history"  onclick="switchTab('history')">History</button>
+    <button class="nav-btn"        data-tab="stats"    onclick="switchTab('stats')">Stats</button>
+    <button class="nav-btn"        data-tab="schedule" onclick="switchTab('schedule')">Schedule</button>
+    <button class="nav-btn"        data-tab="daysoff"  onclick="switchTab('daysoff')">Days off</button>
+    <button class="nav-btn"        data-tab="backup"   onclick="switchTab('backup')">Backup</button>
   </nav>
 
   <main class="app-main">
 
-    <!-- LOG TAB -->
+    <!-- LOG -->
     <div id="tab-log" class="tab-content active">
       <div class="log-card">
         <div class="time-row">
-          <div class="time-field">
-            <label>Bedtime</label>
-            <input type="time" id="bed" value="23:00">
-          </div>
+          <div class="time-field"><label>Bedtime</label><input type="time" id="bed" value="23:00"></div>
           <div class="time-arrow">→</div>
-          <div class="time-field">
-            <label>Wake time</label>
-            <input type="time" id="wake" value="07:30">
-          </div>
+          <div class="time-field"><label>Wake time</label><input type="time" id="wake" value="07:30"></div>
         </div>
-        <div id="hours-display" class="hours-display">
+        <div class="hours-display">
           <span id="hours-val" class="hours-num">—</span>
           <span id="hours-label" class="hours-lbl"></span>
         </div>
         <div id="timing-note" class="timing-note"></div>
         <div class="rating-section">
           <div class="rating-group">
-            <label>Sleep quality <span id="q-val" class="rating-val">—</span></label>
+            <label>Sleep quality — <span id="q-val" class="rating-val">not set</span></label>
             <div class="rating-row" id="qrow"></div>
           </div>
           <div class="rating-group">
-            <label>Morning energy <span id="e-val" class="rating-val">—</span></label>
+            <label>Morning energy — <span id="e-val" class="rating-val">not set</span></label>
             <div class="rating-row" id="erow"></div>
           </div>
         </div>
@@ -126,42 +105,42 @@
       </div>
     </div>
 
-    <!-- HISTORY TAB -->
+    <!-- HISTORY -->
     <div id="tab-history" class="tab-content">
       <div class="tab-header">
         <h2>Sleep log</h2>
         <span class="tab-hint">Tap any entry to edit</span>
       </div>
-      <div id="history-list"><div class="empty-state">No entries yet. Log your first night.</div></div>
+      <div id="history-list"><div class="empty-state">No entries yet.<br>Log your first night to get started.</div></div>
     </div>
 
-    <!-- STATS TAB -->
+    <!-- STATS -->
     <div id="tab-stats" class="tab-content">
       <div class="stats-grid" id="stats-cards"></div>
       <div id="consistency-note"></div>
       <div class="chart-section">
-        <div class="section-label">Last 14 nights</div>
+        <div class="section-label">Last 14 nights — hours slept</div>
         <div class="chart-wrap"><canvas id="main-chart"></canvas></div>
       </div>
       <div class="dots-section">
-        <div class="section-label">28-day log</div>
+        <div class="section-label">Recent nights</div>
         <div class="dot-grid" id="dot-grid"></div>
         <div class="dot-legend">
-          <span class="legend-item"><span class="legend-dot" style="background:#4ade80"></span>Goal + good timing</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#fbbf24"></span>Close or timing off</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#f87171"></span>Significantly short</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#3dd68c"></span>9h goal + good timing</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#f5a524"></span>Close or timing off</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#ef5050"></span>Significantly short</span>
         </div>
       </div>
     </div>
 
-    <!-- SCHEDULE TAB -->
+    <!-- SCHEDULE -->
     <div id="tab-schedule" class="tab-content">
-      <div class="tab-header"><h2>Weekly targets</h2></div>
+      <div class="tab-header"><h2>Nightly targets</h2></div>
       <div class="schedule-list" id="schedule-list"></div>
-      <p class="tab-note">Mon/Thu: 1h before bus (hair wash). Other days: 30 min. Bedtime = alarm minus 9h. Relaxed timing on weekends and holidays — up to 1.5h sleep-in without penalty.</p>
+      <p class="tab-note">Each row shows which night you need to sleep early for the following morning's alarm. Mon/Thu have earlier alarms due to hair wash. Weekends and holidays use relaxed timing — waking up to 1.5h later than usual doesn't affect your score.</p>
     </div>
 
-    <!-- DAYS OFF TAB -->
+    <!-- DAYS OFF -->
     <div id="tab-daysoff" class="tab-content">
       <div class="tab-header"><h2>Days off &amp; holidays</h2></div>
       <div class="add-card">
@@ -175,18 +154,20 @@
       <div id="holidays-list"><div class="empty-state">No days off added yet.</div></div>
     </div>
 
-    <!-- BACKUP TAB -->
+    <!-- BACKUP -->
     <div id="tab-backup" class="tab-content">
-      <div class="tab-header"><h2>Backup &amp; restore</h2></div>
+      <div class="tab-header"><h2>Backup &amp; export</h2></div>
       <div class="add-card">
-        <p class="card-note">Snapshots of all your data. Auto-backups are created before any destructive action. Up to 20 backups kept.</p>
-        <div class="form-group"><label>Backup name (optional)</label><input type="text" id="bkname" placeholder="e.g. before big edit"></div>
+        <p class="card-note">Snapshots of all your data. An auto-backup is created before any destructive action. Up to 20 backups stored.</p>
+        <div class="form-group"><label>Backup label (optional)</label><input type="text" id="bkname" placeholder="e.g. before edit"></div>
         <button class="btn-primary" id="bk-btn" onclick="createBackup()">Create backup now</button>
       </div>
       <div class="export-section">
         <div class="section-label">Export for Claude analysis</div>
         <button class="btn-secondary" id="copy-btn" onclick="doCopy()">Copy sleep summary to clipboard</button>
+        <div id="eprev" class="export-preview" style="display:none"></div>
       </div>
+      <div class="section-label" style="margin-top:1.5rem">Saved backups</div>
       <div id="backup-list"><div class="empty-state">No backups yet.</div></div>
     </div>
 
@@ -205,18 +186,20 @@
         <div class="time-arrow">→</div>
         <div class="time-field"><label>Wake time</label><input type="time" id="edit-wake"></div>
       </div>
-      <div class="rating-group">
-        <label>Sleep quality <span id="edit-q-val" class="rating-val">—</span></label>
-        <div class="rating-row" id="edit-qrow"></div>
-      </div>
-      <div class="rating-group" style="margin-top:1rem">
-        <label>Morning energy <span id="edit-e-val" class="rating-val">—</span></label>
-        <div class="rating-row" id="edit-erow"></div>
+      <div class="rating-section" style="margin-bottom:0">
+        <div class="rating-group">
+          <label>Sleep quality — <span id="edit-q-val" class="rating-val">—</span></label>
+          <div class="rating-row" id="edit-qrow"></div>
+        </div>
+        <div class="rating-group">
+          <label>Morning energy — <span id="edit-e-val" class="rating-val">—</span></label>
+          <div class="rating-row" id="edit-erow"></div>
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn-primary" onclick="saveEdit()">Save changes</button>
         <button class="btn-secondary" onclick="closeModalDirect()">Cancel</button>
-        <button class="btn-danger" onclick="deleteEntry()">Delete entry</button>
+        <button class="btn-danger" onclick="deleteEntry()">Delete this entry</button>
       </div>
     </div>
   </div>
