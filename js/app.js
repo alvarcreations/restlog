@@ -301,16 +301,17 @@ function renderBanner() {
 
   el.classList.add(urgency);
 
-  // Title line: what today is
+  // Title line: always show TOMORROW's schedule (that's what tonight is about)
   let titleLine='';
-  if(todayHol){
-    const h=holidays.find(h=>tonight>=h.start&&tonight<=h.end);
-    titleLine=(h?h.label:'Day off')+' — no school today';
-  } else if(!todaySch){
-    titleLine='Weekend — no school today';
+  if(!tomorrowSch || isHol(tomorrow) || isRelaxedMorning(tomorrow)){
+    const isWeekend = new Date(tomorrow+'T12:00:00').getDay()===0 || new Date(tomorrow+'T12:00:00').getDay()===6;
+    const holEntry = holidays.find(h=>tomorrow>=h.start&&tomorrow<=h.end);
+    if(holEntry) titleLine=holEntry.label+' tomorrow — relaxed night';
+    else if(isWeekend) titleLine='Weekend tomorrow — relaxed night';
+    else titleLine='No school tomorrow';
   } else {
-    const todayHn=todaySch.hair?' · hair wash day':'';
-    titleLine=`${todaySch.name} · alarm ${todaySch.alarm} · leave ${todaySch.leave}${todayHn}`;
+    const hn=tomorrowSch.hair?' · hair wash':'';
+    titleLine=`${tomorrowSch.name} · alarm ${tomorrowSch.alarm} · leave ${tomorrowSch.leave}${hn}`;
   }
 
   el.innerHTML=`
