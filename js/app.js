@@ -339,15 +339,12 @@ function renderBanner() {
 // ─── SCHEDULE ─────────────────────────────────────────────────
 
 function renderSchedule() {
-  document.getElementById('schedule-list').innerHTML = Object.values(SCH).map(s => {
+  const nightOf = { 1:'Sunday night', 2:'Monday night', 3:'Tuesday night', 4:'Wednesday night', 5:'Thursday night' };
+  document.getElementById('schedule-list').innerHTML = Object.entries(SCH).map(([dow, s]) => {
     const badges = [];
-    if (s.name === 'Tuesday') badges.push(`<span class="badge badge-red">Earliest</span>`);
-    if (s.hair) badges.push(`<span class="badge badge-purple">Hair wash</span>`);
-    return `<div class="sched-row">
-      <span class="sched-day">${s.name} ${badges.join('')}</span>
-      <span class="sched-times">Bus ${s.bus} · Leave ${s.leave} · Alarm ${s.alarm}</span>
-      <span class="sched-bed">Bed by ${s.bedBy}</span>
-    </div>`;
+    if (s.name === 'Tuesday') badges.push('<span class="badge badge-red">Earliest wake</span>');
+    if (s.hair) badges.push('<span class="badge badge-purple">Hair wash</span>');
+    return '<div class="sched-row"><div class="sched-left"><span class="sched-day">' + nightOf[dow] + ' ' + badges.join('') + '</span><span class="sched-times">' + s.name + ' alarm ' + s.alarm + ' · bus ' + s.bus + ' · leave ' + s.leave + '</span></div><span class="sched-bed">Bed by ' + s.bedBy + '</span></div>';
   }).join('');
 }
 
