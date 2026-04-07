@@ -162,9 +162,9 @@ function dotCol(e) {
   const morning = entryMorning(e);
   const rel = e.relaxed!=null ? e.relaxed : isRelaxedMorning(morning);
   const ts  = e.timingScore!=null ? e.timingScore : tScore(e.bed,e.wake,rel);
-  if(e.hrs>=GOAL&&ts>=70) return '#3dd68c';
-  if(e.hrs>=GOAL||e.hrs>=GOAL-1) return '#f5a623';
-  return '#f06060';
+  if(e.hrs>=GOAL&&ts>=70) return '#34d399';
+  if(e.hrs>=GOAL||e.hrs>=GOAL-1) return '#fbbf24';
+  return '#f87171';
 }
 
 function conScore(arr) {
@@ -270,9 +270,6 @@ function updatePreview() {
 function renderBanner() {
   const tonight=todayStr();
   const tomorrow=addDays(tonight,1);
-  const todayDow=new Date(tonight+'T12:00:00').getDay();
-  const todaySch=SCH[todayDow]; // today's school info (for the header line)
-  const todayHol=isHol(tonight);
   const tomorrowSch=morningSchedule(tomorrow); // what matters for bedtime
   const tomorrowRelaxed=isRelaxedMorning(tomorrow);
 
@@ -456,11 +453,11 @@ function renderStats() {
       plugins:{
         legend:{display:false},
         tooltip:{
-          backgroundColor:'rgba(15,15,26,0.95)',
-          borderColor:'rgba(255,255,255,0.1)',
+          backgroundColor:'rgba(16,16,25,0.95)',
+          borderColor:'rgba(255,255,255,0.08)',
           borderWidth:1,
-          titleColor:'#ededf5',
-          bodyColor:'#7878a0',
+          titleColor:'#f0f0f8',
+          bodyColor:'rgba(240,240,248,0.55)',
           padding:10,
           callbacks:{
             title:items=>l14[items[0].dataIndex]?fmtNight(l14[items[0].dataIndex].date):'',
@@ -477,12 +474,12 @@ function renderStats() {
       scales:{
         y:{
           min:0,max:12,
-          ticks:{callback:v=>v+'h',font:{size:11},color:'#44445a'},
-          grid:{color:'rgba(255,255,255,0.04)'},
+          ticks:{callback:v=>v+'h',font:{size:11},color:'rgba(240,240,248,0.25)'},
+          grid:{color:'rgba(255,255,255,0.05)'},
           border:{color:'transparent'}
         },
         x:{
-          ticks:{font:{size:9},maxRotation:45,autoSkip:false,color:'#44445a'},
+          ticks:{font:{size:9},maxRotation:45,autoSkip:false,color:'rgba(240,240,248,0.25)'},
           grid:{display:false},
           border:{color:'transparent'}
         }
