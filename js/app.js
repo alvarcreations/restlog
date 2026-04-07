@@ -94,7 +94,10 @@ function calcH(b,w) {
   return Math.round(d/60*10)/10;
 }
 
-function todayStr() { return new Date().toISOString().slice(0,10); }
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr+'T12:00:00');
