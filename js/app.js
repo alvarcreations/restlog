@@ -1157,7 +1157,8 @@ function switchTab(t) {
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.querySelector(`[data-tab="${t}"]`).classList.add('active');
-  if(t==='stats')    renderStats();
-  if(t==='activity') renderActivity();
-  if(t==='export')   document.getElementById('eprev').textContent=buildExport();
+  if(t==='stats')   renderStats();
+  if(t==='log')     renderActivity();
+  if(t==='history') { renderActivity(); }
+  if(t==='export')  document.getElementById('eprev').textContent=buildExport();
 }

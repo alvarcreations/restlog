@@ -74,7 +74,6 @@
     <button class="nav-btn"        data-tab="history"  onclick="switchTab('history')">History</button>
     <button class="nav-btn"        data-tab="stats"    onclick="switchTab('stats')">Stats</button>
     <button class="nav-btn"        data-tab="schedule" onclick="switchTab('schedule')">Schedule</button>
-    <button class="nav-btn"        data-tab="activity" onclick="switchTab('activity')">Activity</button>
     <button class="nav-btn"        data-tab="daysoff"  onclick="switchTab('daysoff')">Days off</button>
     <button class="nav-btn"        data-tab="backup"   onclick="switchTab('backup')">Backup</button>
   </nav>
@@ -111,54 +110,9 @@
         </div>
         <button class="btn-primary" id="save-btn" onclick="saveEntry()">Save tonight's sleep</button>
       </div>
-    </div>
 
-    <!-- HISTORY -->
-    <div id="tab-history" class="tab-content">
-      <div class="tab-header">
-        <h2>Sleep log</h2>
-        <span class="tab-hint">Tap any entry to edit</span>
-      </div>
-      <div id="history-list"><div class="empty-state">No entries yet.<br>Log your first night to get started.</div></div>
-    </div>
-
-    <!-- STATS -->
-    <div id="tab-stats" class="tab-content">
-      <div class="stats-grid" id="stats-cards"></div>
-      <div id="consistency-note"></div>
-      <div class="chart-section">
-        <div class="section-label">Last 14 nights — hours slept</div>
-        <div class="chart-wrap"><canvas id="main-chart"></canvas></div>
-      </div>
-      <div class="dots-section">
-        <div class="section-label">Recent nights</div>
-        <div class="dot-grid" id="dot-grid"></div>
-        <div class="dot-legend">
-          <span class="legend-item"><span class="legend-dot" style="background:#4ade80"></span>9h goal + good timing</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#fbbf24"></span>Close or timing off</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#f87171"></span>Significantly short</span>
-        </div>
-      </div>
-
-      <!-- Activity Stats -->
-      <div class="stats-sep"><span class="section-label">Activity</span></div>
-      <div class="stats-grid" id="act-stats-cards"></div>
-      <div class="chart-section" id="steps-chart-section" style="display:none">
-        <div class="section-label">Last 14 days — steps</div>
-        <div class="chart-wrap"><canvas id="steps-chart"></canvas></div>
-      </div>
-    </div>
-
-    <!-- SCHEDULE -->
-    <div id="tab-schedule" class="tab-content">
-      <div class="tab-header"><h2>Nightly targets</h2></div>
-      <div class="schedule-list" id="schedule-list"></div>
-      <p class="tab-note">Each row shows which night you need to sleep early for the following morning's alarm. Mon/Thu have earlier alarms due to hair wash. Weekends and holidays use relaxed timing — waking up to 1.5h later than usual doesn't affect your score.</p>
-    </div>
-
-    <!-- ACTIVITY -->
-    <div id="tab-activity" class="tab-content">
-      <div class="tab-header"><h2>Activity</h2></div>
+      <!-- Activity section on log page -->
+      <div class="log-section-sep"><span>Activity</span></div>
 
       <div class="log-date-row">
         <span class="log-date-label">Date</span>
@@ -220,12 +174,55 @@
       <!-- Workout list for selected date -->
       <div class="section-label">Logged for this day</div>
       <div id="workout-list"><div class="empty-state">No workouts logged for this date.</div></div>
+    </div>
 
-      <!-- Activity History -->
+    <!-- HISTORY -->
+    <div id="tab-history" class="tab-content">
+      <div class="tab-header">
+        <h2>Sleep log</h2>
+        <span class="tab-hint">Tap any entry to edit</span>
+      </div>
+      <div id="history-list"><div class="empty-state">No entries yet.<br>Log your first night to get started.</div></div>
+
+      <!-- Activity history on same page -->
       <div class="act-history-header">
         <div class="section-label">Activity history</div>
       </div>
       <div id="activity-history-list"></div>
+    </div>
+
+    <!-- STATS -->
+    <div id="tab-stats" class="tab-content">
+      <div class="stats-grid" id="stats-cards"></div>
+      <div id="consistency-note"></div>
+      <div class="chart-section">
+        <div class="section-label">Last 14 nights — hours slept</div>
+        <div class="chart-wrap"><canvas id="main-chart"></canvas></div>
+      </div>
+      <div class="dots-section">
+        <div class="section-label">Recent nights</div>
+        <div class="dot-grid" id="dot-grid"></div>
+        <div class="dot-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#4ade80"></span>9h goal + good timing</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#fbbf24"></span>Close or timing off</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#f87171"></span>Significantly short</span>
+        </div>
+      </div>
+
+      <!-- Activity Stats -->
+      <div class="stats-sep"><span class="section-label">Activity</span></div>
+      <div class="stats-grid" id="act-stats-cards"></div>
+      <div class="chart-section" id="steps-chart-section" style="display:none">
+        <div class="section-label">Last 14 days — steps</div>
+        <div class="chart-wrap"><canvas id="steps-chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE -->
+    <div id="tab-schedule" class="tab-content">
+      <div class="tab-header"><h2>Nightly targets</h2></div>
+      <div class="schedule-list" id="schedule-list"></div>
+      <p class="tab-note">Each row shows which night you need to sleep early for the following morning's alarm. Mon/Thu have earlier alarms due to hair wash. Weekends and holidays use relaxed timing — waking up to 1.5h later than usual doesn't affect your score.</p>
     </div>
 
     <!-- DAYS OFF -->

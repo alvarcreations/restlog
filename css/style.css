@@ -844,6 +844,28 @@ body {
 }
 
 /* ================================================================
+   LOG SECTION SEPARATOR (sleep / activity divider on Log tab)
+   ================================================================ */
+.log-section-sep {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 1.75rem 0 1.25rem;
+  color: var(--text-3);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.log-section-sep::before,
+.log-section-sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ================================================================
    ACTIVITY HISTORY
    ================================================================ */
 .act-history-header {
