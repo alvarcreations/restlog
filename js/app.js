@@ -695,35 +695,88 @@ function renderBackups() {
 // ─── EXPORT ───────────────────────────────────────────────────
 
 function buildExport() {
-  if(!entries.length)return'No data yet.';
+  if(!entries.length && !activityDays.length && !workouts.length) return 'No data yet.';
   const s=[...entries].sort((a,b)=>a.date.localeCompare(b.date));
-  const avg=Math.round(s.reduce((x,e)=>x+e.hrs,0)/s.length*10)/10;
-  const gh=s.filter(e=>e.hrs>=GOAL).length;
-  const cs=conScore(s);
-  let streak=0; for(const e of [...s].reverse()){if(e.hrs>=GOAL)streak++;else break;}
-  const lines=[
-    '=== Alvar — Restlog sleep data ===',
-    'Exported: '+new Date().toLocaleDateString('en-SE'),
-    'Sleep goal: '+GOAL+'h per night',
-    'Note: dates show NIGHT START → MORNING WAKE',
-    '',
-    '--- Summary ---',
-    'Nights logged: '+s.length,
-    'Average sleep: '+avg+'h',
-    'Goal hit rate: '+Math.round(gh/s.length*100)+'% ('+gh+'/'+s.length+')',
-    'Current streak: '+streak+' nights',
-    'Consistency score: '+(cs?cs.score+'/100 (bed SD: '+Math.round(cs.bSD/60*10)/10+'h, wake SD: '+Math.round(cs.wSD/60*10)/10+'h)':'insufficient data'),
-    holidays.length?'\n--- Days off / holidays ---\n'+holidays.map(h=>h.label+': '+h.start+(h.start!==h.end?' to '+h.end:'')).join('\n'):'',
-    '','--- All entries (oldest first) ---',
-    'night           bed    wake   hrs   timing  Q    E    status  relaxed'
-  ];
-  s.forEach(e=>{
-    const morning=entryMorning(e);
-    const rel=e.relaxed!=null?e.relaxed:isRelaxedMorning(morning);
-    const ts=e.timingScore!=null?e.timingScore:tScore(e.bed,e.wake,rel);
-    const night=fmtNight(e.date).padEnd(15);
-    lines.push(`${night} ${e.bed}  ${e.wake}  ${e.hrs}h  ${ts}/100  ${e.quality||'—'}/10  ${e.energy||'—'}/10  ${e.hrs>=GOAL?'GOAL':'short '+(Math.round((GOAL-e.hrs)*10)/10)+'h'}${rel?' (relaxed)':''}`);
-  });
+
+  // ── Sleep summary ──
+  const lines=['=== Alvar — Restlog data ===', 'Exported: '+new Date().toLocaleDateString('en-SE'), ''];
+
+  if(s.length) {
+    const avg=Math.round(s.reduce((x,e)=>x+e.hrs,0)/s.length*10)/10;
+    const gh=s.filter(e=>e.hrs>=GOAL).length;
+    const cs=conScore(s);
+    let streak=0; for(const e of [...s].reverse()){if(e.hrs>=GOAL)streak++;else break;}
+    lines.push(
+      '--- Sleep summary ---',
+      'Goal: '+GOAL+'h per night',
+      'Nights logged: '+s.length,
+      'Average sleep: '+avg+'h',
+      'Goal hit rate: '+Math.round(gh/s.length*100)+'% ('+gh+'/'+s.length+')',
+      'Current streak: '+streak+' nights',
+      'Consistency: '+(cs?cs.score+'/100 (bed SD: '+Math.round(cs.bSD/60*10)/10+'h, wake SD: '+Math.round(cs.wSD/60*10)/10+'h)':'insufficient data'),
+    );
+    if(holidays.length) {
+      lines.push('', '--- Days off / holidays ---');
+      holidays.forEach(h=>lines.push(h.label+': '+h.start+(h.start!==h.end?' to '+h.end:'')));
+    }
+    lines.push('', '--- Sleep log (oldest first) ---',
+      'night           bed    wake   hrs   timing  Q    E    status');
+    s.forEach(e=>{
+      const morning=entryMorning(e);
+      const rel=e.relaxed!=null?e.relaxed:isRelaxedMorning(morning);
+      const ts=e.timingScore!=null?e.timingScore:tScore(e.bed,e.wake,rel);
+      const night=fmtNight(e.date).padEnd(15);
+      lines.push(`${night} ${e.bed}  ${e.wake}  ${e.hrs}h  ${ts}/100  ${e.quality||'—'}/10  ${e.energy||'—'}/10  ${e.hrs>=GOAL?'GOAL':'short '+(Math.round((GOAL-e.hrs)*10)/10)+'h'}${rel?' (relaxed)':''}`);
+    });
+  }
+
+  // ── Activity summary ──
+  const allSteps=activityDays.filter(d=>d.steps!=null);
+  if(allSteps.length || workouts.length) {
+    lines.push('');
+    if(allSteps.length) {
+      const avgSt=Math.round(allSteps.reduce((s,d)=>s+d.steps,0)/allSteps.length);
+      const maxSt=Math.max(...allSteps.map(d=>d.steps));
+      const days10k=allSteps.filter(d=>d.steps>=10000).length;
+      lines.push(
+        '--- Activity summary ---',
+        'Days with steps logged: '+allSteps.length,
+        'Average steps: '+avgSt.toLocaleString(),
+        'Best day: '+maxSt.toLocaleString()+' steps',
+        '10k+ days: '+days10k+' ('+Math.round(days10k/allSteps.length*100)+'%)',
+      );
+    }
+    if(workouts.length) {
+      const totalMin=workouts.reduce((s,w)=>s+w.duration,0);
+      const byType={};
+      workouts.forEach(w=>{ byType[w.type]=(byType[w.type]||0)+1; });
+      const typeStr=Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,n])=>t+' ×'+n).join(', ');
+      lines.push(
+        'Workouts logged: '+workouts.length+' ('+Math.round(totalMin/60)+'h total)',
+        'By type: '+typeStr,
+      );
+    }
+
+    // Per-day activity log: only days that have any data
+    const allDates=new Set([...activityDays.map(d=>d.date),...workouts.map(w=>w.date)]);
+    const sortedDates=[...allDates].sort();
+    if(sortedDates.length) {
+      lines.push('', '--- Activity log (oldest first) ---', 'date         steps     workouts');
+      sortedDates.forEach(date=>{
+        const day=activityDays.find(d=>d.date===date);
+        const dw=workouts.filter(w=>w.date===date);
+        const stepStr=(day&&day.steps!=null)?String(day.steps).padStart(7):'      —';
+        const wStr=dw.map(w=>{
+          const dur=w.duration>=60?Math.floor(w.duration/60)+'h'+(w.duration%60?w.duration%60+'min':''):w.duration+'min';
+          return w.type+' '+dur+(w.intensity?' @'+w.intensity+'/10':'');
+        }).join('; ');
+        const d=new Date(date+'T12:00:00');
+        const fmt=d.toLocaleDateString('en-SE',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+        lines.push(`${fmt.padEnd(13)} ${stepStr}  ${wStr}`);
+      });
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -732,7 +785,7 @@ function doCopy() {
   document.getElementById('eprev').textContent=t;
   navigator.clipboard.writeText(t).then(()=>{
     const b=document.getElementById('copy-btn'); b.textContent='Copied!';
-    setTimeout(()=>b.textContent='Copy sleep summary',2000);
+    setTimeout(()=>b.textContent='Copy summary to clipboard',2000);
   }).catch(()=>{document.getElementById('copy-btn').textContent='Select text below to copy';});
 }
 
