@@ -20,7 +20,8 @@ const SCH = {
 
 let sb, user;
 let entries=[], holidays=[], backups=[];
-let qv=0, ev=0, editQv=0, editEv=0;
+let activityDays=[], workouts=[];
+let qv=0, ev=0, editQv=0, editEv=0, actIntensity=0;
 let chart=null;
 
 // ─── INIT ────────────────────────────────────────────────────
@@ -47,12 +48,21 @@ async function bootApp() {
   buildRating('erow','e-val', v=>{ ev=v; });
   buildRating('edit-qrow','edit-q-val', v=>{ editQv=v; });
   buildRating('edit-erow','edit-e-val', v=>{ editEv=v; });
+  buildRating('act-int-row','act-int-val', v=>{ actIntensity=v; });
   document.getElementById('bed').addEventListener('input', updatePreview);
   document.getElementById('wake').addEventListener('input', updatePreview);
   const t = todayStr();
   document.getElementById('hstart').value = t;
   document.getElementById('hend').value   = t;
   document.getElementById('today-pill').textContent = fmtShort(t);
+  // Activity tab defaults
+  document.getElementById('act-date').value = t;
+  document.getElementById('act-date').addEventListener('change', renderActivity);
+  document.getElementById('act-steps').addEventListener('input', updateStepsNote);
+  document.getElementById('act-type').addEventListener('change', function() {
+    document.getElementById('act-type-other-row').style.display = this.value==='Other' ? 'block' : 'none';
+  });
+
   // Default log date to yesterday (the night that just ended)
   document.getElementById('log-date').value = addDays(t, -1);
   document.getElementById('log-date').addEventListener('change', () => { updatePreview(); updateLogNight(); });
@@ -68,19 +78,24 @@ async function bootApp() {
   renderStats();
   renderHolidays();
   renderBackups();
+  renderActivity();
   updateLogNight();
 }
 
 async function loadAll() {
   const uid = user.id;
-  const [eR, hR, bR] = await Promise.all([
+  const [eR, hR, bR, aR, wR] = await Promise.all([
     sb.from('entries').select('*').eq('user_id',uid).order('date',{ascending:false}),
     sb.from('holidays').select('*').eq('user_id',uid).order('start_date',{ascending:true}),
-    sb.from('backups').select('*').eq('user_id',uid).order('created_at',{ascending:false}).limit(20)
+    sb.from('backups').select('*').eq('user_id',uid).order('created_at',{ascending:false}).limit(20),
+    sb.from('activity_days').select('*').eq('user_id',uid).order('date',{ascending:false}),
+    sb.from('workouts').select('*').eq('user_id',uid).order('date',{ascending:false})
   ]);
-  entries  = (eR.data||[]).map(dbToEntry);
-  holidays = (hR.data||[]).map(dbToHoliday);
-  backups  = (bR.data||[]);
+  entries      = (eR.data||[]).map(dbToEntry);
+  holidays     = (hR.data||[]).map(dbToHoliday);
+  backups      = (bR.data||[]);
+  activityDays = (aR.data||[]).map(dbToActivityDay);
+  workouts     = (wR.data||[]).map(dbToWorkout);
 }
 
 function dbToEntry(r) {
@@ -90,6 +105,12 @@ function dbToEntry(r) {
 }
 function dbToHoliday(r) {
   return { id:r.id, start:r.start_date, end:r.end_date, label:r.label };
+}
+function dbToActivityDay(r) {
+  return { id:r.id, date:r.date, steps:r.steps };
+}
+function dbToWorkout(r) {
+  return { id:r.id, date:r.date, type:r.type, duration:r.duration, intensity:r.intensity };
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────
@@ -714,6 +735,113 @@ function doCopy() {
   }).catch(()=>{document.getElementById('copy-btn').textContent='Select text below to copy';});
 }
 
+// ─── ACTIVITY ─────────────────────────────────────────────────
+
+function actDateStr() {
+  return document.getElementById('act-date').value || todayStr();
+}
+
+function stepsContext(n) {
+  if(!n||n<=0) return {text:'', cls:''};
+  if(n>=10000) return {text:n.toLocaleString()+' steps — 10k goal reached ✓', cls:'good'};
+  if(n>=8000)  return {text:n.toLocaleString()+' steps — great day', cls:'good'};
+  if(n>=6000)  return {text:n.toLocaleString()+' steps — active day', cls:'ok'};
+  if(n>=3000)  return {text:n.toLocaleString()+' steps — moderate activity', cls:'ok'};
+  return {text:n.toLocaleString()+' steps — low movement today', cls:'low'};
+}
+
+function intColor(n) {
+  if(!n) return 'var(--text-3)';
+  if(n<=3) return 'var(--green)';
+  if(n<=6) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function updateStepsNote() {
+  const n = parseInt(document.getElementById('act-steps').value)||0;
+  const el = document.getElementById('steps-note');
+  const {text, cls} = stepsContext(n);
+  el.textContent = text;
+  el.className = 'steps-note' + (cls ? ' '+cls : '');
+}
+
+function renderActivity() {
+  const d = actDateStr();
+  // Update date label
+  const fmt = document.getElementById('act-date-fmt');
+  if(fmt) fmt.textContent = d ? new Date(d+'T12:00:00').toLocaleDateString('en-SE',{weekday:'short',day:'numeric',month:'short'}) : '';
+
+  // Populate steps for this date
+  const day = activityDays.find(x=>x.date===d);
+  const stepsEl = document.getElementById('act-steps');
+  stepsEl.value = (day&&day.steps!=null) ? day.steps : '';
+  updateStepsNote();
+
+  // Render workouts for this date
+  const dayWorkouts = workouts.filter(w=>w.date===d);
+  const el = document.getElementById('workout-list');
+  if(!dayWorkouts.length) {
+    el.innerHTML='<div class="empty-state">No workouts logged for this date.</div>';
+    return;
+  }
+  el.innerHTML = dayWorkouts.map(w=>{
+    const dur = w.duration >= 60
+      ? Math.floor(w.duration/60)+'h'+(w.duration%60?(' '+w.duration%60+'min'):'')
+      : w.duration+' min';
+    const intStr = w.intensity ? `<span class="workout-int" style="color:${intColor(w.intensity)}">${w.intensity}/10</span>` : '';
+    const meta = [dur, intStr].filter(Boolean).join(' · ');
+    return `<div class="workout-item">
+      <div class="workout-info">
+        <span class="workout-type">${w.type}</span>
+        <span class="workout-meta">${meta}</span>
+      </div>
+      <button class="remove-btn" onclick="removeWorkout('${w.id}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function saveSteps() {
+  const d = actDateStr();
+  const steps = parseInt(document.getElementById('act-steps').value)||null;
+  const existing = activityDays.find(x=>x.date===d);
+  let res;
+  if(existing) res = await sb.from('activity_days').update({steps}).eq('id',existing.id).select().single();
+  else         res = await sb.from('activity_days').insert({user_id:user.id,date:d,steps}).select().single();
+  if(res.data){
+    const mapped = dbToActivityDay(res.data);
+    if(existing){ const idx=activityDays.findIndex(x=>x.date===d); activityDays[idx]=mapped; }
+    else activityDays.push(mapped);
+  }
+  updateStepsNote();
+  const btn = document.getElementById('steps-save-btn');
+  btn.textContent='Saved!'; btn.style.background='#22c55e';
+  setTimeout(()=>{btn.textContent='Save';btn.style.background='';}, 1400);
+}
+
+async function addWorkout() {
+  const d = actDateStr();
+  let type = document.getElementById('act-type').value;
+  if(type==='Other') type = document.getElementById('act-type-other').value.trim()||'Other';
+  const duration = parseInt(document.getElementById('act-dur').value);
+  if(!duration||duration<1) return;
+  const {data} = await sb.from('workouts').insert({
+    user_id:user.id, date:d, type, duration,
+    intensity:actIntensity||null
+  }).select().single();
+  if(data) workouts.push(dbToWorkout(data));
+  // Reset form
+  document.getElementById('act-dur').value='';
+  actIntensity=0;
+  setRating('act-int-row','act-int-val',0,v=>{actIntensity=v;});
+  renderActivity();
+}
+
+async function removeWorkout(id) {
+  await sb.from('workouts').delete().eq('id',id);
+  workouts = workouts.filter(w=>w.id!==id);
+  renderActivity();
+}
+
 // ─── TAB SWITCHING ────────────────────────────────────────────
 
 function switchTab(t) {
@@ -721,6 +849,7 @@ function switchTab(t) {
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.querySelector(`[data-tab="${t}"]`).classList.add('active');
-  if(t==='stats') renderStats();
-  if(t==='export') document.getElementById('eprev').textContent=buildExport();
+  if(t==='stats')    renderStats();
+  if(t==='activity') renderActivity();
+  if(t==='export')   document.getElementById('eprev').textContent=buildExport();
 }

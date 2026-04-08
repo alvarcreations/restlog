@@ -74,6 +74,7 @@
     <button class="nav-btn"        data-tab="history"  onclick="switchTab('history')">History</button>
     <button class="nav-btn"        data-tab="stats"    onclick="switchTab('stats')">Stats</button>
     <button class="nav-btn"        data-tab="schedule" onclick="switchTab('schedule')">Schedule</button>
+    <button class="nav-btn"        data-tab="activity" onclick="switchTab('activity')">Activity</button>
     <button class="nav-btn"        data-tab="daysoff"  onclick="switchTab('daysoff')">Days off</button>
     <button class="nav-btn"        data-tab="backup"   onclick="switchTab('backup')">Backup</button>
   </nav>
@@ -145,6 +146,72 @@
       <div class="tab-header"><h2>Nightly targets</h2></div>
       <div class="schedule-list" id="schedule-list"></div>
       <p class="tab-note">Each row shows which night you need to sleep early for the following morning's alarm. Mon/Thu have earlier alarms due to hair wash. Weekends and holidays use relaxed timing — waking up to 1.5h later than usual doesn't affect your score.</p>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div id="tab-activity" class="tab-content">
+      <div class="tab-header"><h2>Activity</h2></div>
+
+      <div class="log-date-row">
+        <span class="log-date-label">Date</span>
+        <input type="date" id="act-date" class="log-date-input">
+        <span id="act-date-fmt" class="log-night-fmt"></span>
+      </div>
+
+      <!-- Steps -->
+      <div class="add-card">
+        <div class="section-label">Steps</div>
+        <div class="steps-row">
+          <input type="number" id="act-steps" class="steps-input" placeholder="e.g. 8500" min="0" max="150000">
+          <button class="btn-primary steps-btn" id="steps-save-btn" onclick="saveSteps()">Save</button>
+        </div>
+        <div id="steps-note" class="steps-note"></div>
+      </div>
+
+      <!-- Add workout -->
+      <div class="add-card">
+        <div class="section-label">Add workout</div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="act-type" class="act-select">
+            <option>Football</option>
+            <option>Running</option>
+            <option>Gym / Weights</option>
+            <option>Cycling</option>
+            <option>Swimming</option>
+            <option>Basketball</option>
+            <option>Tennis</option>
+            <option>Walk</option>
+            <option>Yoga / Stretching</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div id="act-type-other-row" class="form-group" style="display:none">
+          <label>Describe</label>
+          <input type="text" id="act-type-other" placeholder="e.g. Badminton, Boxing…">
+        </div>
+        <div class="form-group">
+          <label>Duration</label>
+          <div class="dur-row">
+            <input type="number" id="act-dur" class="dur-input" placeholder="min" min="1" max="600">
+            <div class="dur-shortcuts">
+              <button type="button" class="dur-chip" onclick="document.getElementById('act-dur').value=30">30</button>
+              <button type="button" class="dur-chip" onclick="document.getElementById('act-dur').value=45">45</button>
+              <button type="button" class="dur-chip" onclick="document.getElementById('act-dur').value=60">60</button>
+              <button type="button" class="dur-chip" onclick="document.getElementById('act-dur').value=90">90</button>
+            </div>
+          </div>
+        </div>
+        <div class="rating-group">
+          <label>Intensity — <span id="act-int-val" class="rating-val">not set</span></label>
+          <div class="rating-row" id="act-int-row"></div>
+        </div>
+        <button class="btn-primary" style="margin-top:8px" onclick="addWorkout()">Add workout</button>
+      </div>
+
+      <!-- Workout list for selected date -->
+      <div class="section-label">Logged for this day</div>
+      <div id="workout-list"><div class="empty-state">No workouts logged for this date.</div></div>
     </div>
 
     <!-- DAYS OFF -->
