@@ -162,7 +162,7 @@ function dotCol(e) {
   const morning = entryMorning(e);
   const rel = e.relaxed!=null ? e.relaxed : isRelaxedMorning(morning);
   const ts  = e.timingScore!=null ? e.timingScore : tScore(e.bed,e.wake,rel);
-  if(e.hrs>=GOAL&&ts>=70) return '#34d399';
+  if(e.hrs>=GOAL&&ts>=70) return '#4ade80';
   if(e.hrs>=GOAL||e.hrs>=GOAL-1) return '#fbbf24';
   return '#f87171';
 }
@@ -441,10 +441,10 @@ function renderStats() {
       labels:l14.map(e=>fmtNight(e.date)),
       datasets:[{
         data:l14.map(e=>e.hrs),
-        backgroundColor:l14.map(e=>dotCol(e)+'cc'),
-        borderColor:l14.map(e=>dotCol(e)),
+        backgroundColor:l14.map(e=>dotCol(e)+'33'),
+        borderColor:l14.map(e=>dotCol(e)+'88'),
         borderWidth:1,
-        borderRadius:5,
+        borderRadius:8,
         borderSkipped:false
       }]
     },
@@ -453,12 +453,15 @@ function renderStats() {
       plugins:{
         legend:{display:false},
         tooltip:{
-          backgroundColor:'rgba(16,16,25,0.95)',
-          borderColor:'rgba(255,255,255,0.08)',
+          backgroundColor:'rgba(0,0,0,0.85)',
+          borderColor:'rgba(255,255,255,0.1)',
           borderWidth:1,
-          titleColor:'#f0f0f8',
-          bodyColor:'rgba(240,240,248,0.55)',
-          padding:10,
+          titleColor:'#fff',
+          bodyColor:'rgba(255,255,255,0.55)',
+          padding:12,
+          cornerRadius:10,
+          titleFont:{family:'Inter',weight:'500'},
+          bodyFont:{family:'Inter'},
           callbacks:{
             title:items=>l14[items[0].dataIndex]?fmtNight(l14[items[0].dataIndex].date):'',
             label:c=>{
@@ -474,12 +477,12 @@ function renderStats() {
       scales:{
         y:{
           min:0,max:12,
-          ticks:{callback:v=>v+'h',font:{size:11},color:'rgba(240,240,248,0.25)'},
-          grid:{color:'rgba(255,255,255,0.05)'},
+          ticks:{callback:v=>v+'h',font:{size:11,family:'Inter'},color:'rgba(255,255,255,0.18)'},
+          grid:{color:'rgba(255,255,255,0.04)'},
           border:{color:'transparent'}
         },
         x:{
-          ticks:{font:{size:9},maxRotation:45,autoSkip:false,color:'rgba(240,240,248,0.25)'},
+          ticks:{font:{size:9,family:'Inter'},maxRotation:45,autoSkip:false,color:'rgba(255,255,255,0.18)'},
           grid:{display:false},
           border:{color:'transparent'}
         }
@@ -493,7 +496,7 @@ function renderStats() {
     const rel=e.relaxed!=null?e.relaxed:isRelaxedMorning(morning);
     const ts=e.timingScore!=null?e.timingScore:tScore(e.bed,e.wake,rel);
     const hol=isHol(e.date)||isHol(morning);
-    const outline=hol?'box-shadow:0 0 0 2px #2bc9b0;':'';
+    const outline=hol?'box-shadow:0 0 0 2px #2dd4bf;':'';
     return `<div class="dot" style="background:${dotCol(e)};${outline}" title="${fmtNight(e.date)} · ${e.hrs}h · timing ${ts}/100${hol?' · day off':''}"></div>`;
   }).join('');
 }
