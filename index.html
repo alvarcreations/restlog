@@ -139,6 +139,14 @@
           <span class="legend-item"><span class="legend-dot" style="background:#f87171"></span>Significantly short</span>
         </div>
       </div>
+
+      <!-- Activity Stats -->
+      <div class="stats-sep"><span class="section-label">Activity</span></div>
+      <div class="stats-grid" id="act-stats-cards"></div>
+      <div class="chart-section" id="steps-chart-section" style="display:none">
+        <div class="section-label">Last 14 days — steps</div>
+        <div class="chart-wrap"><canvas id="steps-chart"></canvas></div>
+      </div>
     </div>
 
     <!-- SCHEDULE -->
@@ -212,6 +220,12 @@
       <!-- Workout list for selected date -->
       <div class="section-label">Logged for this day</div>
       <div id="workout-list"><div class="empty-state">No workouts logged for this date.</div></div>
+
+      <!-- Activity History -->
+      <div class="act-history-header">
+        <div class="section-label">Activity history</div>
+      </div>
+      <div id="activity-history-list"></div>
     </div>
 
     <!-- DAYS OFF -->
@@ -243,6 +257,15 @@
       </div>
       <div class="section-label" style="margin-top:1.5rem">Saved backups</div>
       <div id="backup-list"><div class="empty-state">No backups yet.</div></div>
+
+      <div class="section-label" style="margin-top:1.5rem">Import from Apple Health</div>
+      <div class="add-card">
+        <p class="card-note">Export from the Health app (tap your profile photo → Export All Health Data), then upload the zip here to backfill your step and workout history.</p>
+        <button class="btn-secondary" onclick="document.getElementById('health-import-file').click()">Choose export.zip</button>
+        <input type="file" id="health-import-file" accept=".zip" style="display:none" onchange="handleHealthImport(this.files[0])">
+        <div id="import-status" class="import-status"></div>
+        <div id="import-progress" class="import-progress"></div>
+      </div>
     </div>
 
   </main>
@@ -286,6 +309,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/app.js"></script>
 </body>

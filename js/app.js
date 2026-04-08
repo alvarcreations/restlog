@@ -22,7 +22,7 @@ let sb, user;
 let entries=[], holidays=[], backups=[];
 let activityDays=[], workouts=[];
 let qv=0, ev=0, editQv=0, editEv=0, actIntensity=0;
-let chart=null;
+let chart=null, stepsChart=null;
 
 // ─── INIT ────────────────────────────────────────────────────
 
@@ -444,6 +444,7 @@ function renderHistory() {
 // ─── STATS ────────────────────────────────────────────────────
 
 function renderStats() {
+  renderActivityStats();
   if(!entries.length) return;
   const avg=Math.round(entries.reduce((s,e)=>s+e.hrs,0)/entries.length*10)/10;
   const gh=entries.filter(e=>e.hrs>=GOAL).length;
@@ -798,6 +799,7 @@ function renderActivity() {
       <button class="remove-btn" onclick="removeWorkout('${w.id}')">×</button>
     </div>`;
   }).join('');
+  renderActivityHistory();
 }
 
 async function saveSteps() {
@@ -813,6 +815,7 @@ async function saveSteps() {
     else activityDays.push(mapped);
   }
   updateStepsNote();
+  renderActivityHistory();
   const btn = document.getElementById('steps-save-btn');
   btn.textContent='Saved!'; btn.style.background='#22c55e';
   setTimeout(()=>{btn.textContent='Save';btn.style.background='';}, 1400);
@@ -840,6 +843,311 @@ async function removeWorkout(id) {
   await sb.from('workouts').delete().eq('id',id);
   workouts = workouts.filter(w=>w.id!==id);
   renderActivity();
+}
+
+// ─── ACTIVITY HISTORY ────────────────────────────────────────
+
+function renderActivityHistory() {
+  const el = document.getElementById('activity-history-list');
+  if (!el) return;
+
+  // Collect all unique dates from both tables
+  const dateSet = new Set([
+    ...activityDays.map(d => d.date),
+    ...workouts.map(w => w.date)
+  ]);
+
+  if (!dateSet.size) {
+    el.innerHTML = '<div class="empty-state" style="padding:2rem 0">No activity logged yet.</div>';
+    return;
+  }
+
+  const sorted = [...dateSet].sort((a,b) => b.localeCompare(a)).slice(0, 60);
+  const today = todayStr();
+
+  el.innerHTML = sorted.map(date => {
+    const dayData = activityDays.find(d => d.date === date);
+    const dayWorkouts = workouts.filter(w => w.date === date);
+    const steps = dayData ? dayData.steps : null;
+
+    const stepsCtx = steps != null ? stepsContext(steps) : {text:'', cls:''};
+    const stepsStr = stepsCtx.text ? stepsCtx.text.split(' — ')[0] : ''; // just "8,500 steps"
+    const stepsLabel = steps != null
+      ? `<span class="act-hist-steps ${stepsCtx.cls}">${stepsStr}</span>`
+      : '';
+
+    const wStr = dayWorkouts.length
+      ? dayWorkouts.map(w => {
+          const dur = w.duration >= 60
+            ? Math.floor(w.duration/60)+'h'+(w.duration%60?' '+w.duration%60+'min':'')
+            : w.duration+'min';
+          return w.type+' '+dur;
+        }).join(', ')
+      : '';
+    const wLabel = wStr ? `<span class="act-hist-workouts">${wStr}</span>` : '';
+
+    const d = new Date(date+'T12:00:00');
+    const fmt = date === today
+      ? 'Today'
+      : date === addDays(today,-1)
+        ? 'Yesterday'
+        : d.toLocaleDateString('en-SE',{weekday:'short',day:'numeric',month:'short'});
+
+    return `<div class="act-history-item" onclick="loadActivityDay('${date}')">
+      <div class="act-hist-date">${fmt}</div>
+      <div class="act-hist-right">${stepsLabel}${wLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function loadActivityDay(date) {
+  document.getElementById('act-date').value = date;
+  document.getElementById('tab-activity').scrollTo({top:0, behavior:'smooth'});
+  renderActivity();
+}
+
+// ─── ACTIVITY STATS ───────────────────────────────────────────
+
+function getLastNDaysActivity(n) {
+  const result = [];
+  const today = todayStr();
+  for (let i = n-1; i >= 0; i--) {
+    const date = addDays(today, -i);
+    const dayData = activityDays.find(d => d.date === date);
+    result.push({ date, steps: dayData ? dayData.steps : null });
+  }
+  return result;
+}
+
+function renderActivityStats() {
+  const el = document.getElementById('act-stats-cards');
+  if (!el) return;
+
+  const allSteps = activityDays.filter(d => d.steps != null).map(d => d.steps);
+  const last7 = getLastNDaysActivity(7);
+  const last7Steps = last7.filter(d => d.steps != null);
+
+  if (!allSteps.length && !workouts.length) {
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;padding:1.5rem 0">No activity data yet. Import from Apple Health or log steps manually.</div>';
+    const cs = document.getElementById('steps-chart-section');
+    if (cs) cs.style.display = 'none';
+    return;
+  }
+
+  const avgSteps7 = last7Steps.length
+    ? Math.round(last7Steps.reduce((s,d) => s+d.steps,0) / last7Steps.length)
+    : null;
+  const maxSteps = allSteps.length ? Math.max(...allSteps) : null;
+  const totalWorkouts = workouts.length;
+  const last7date = addDays(todayStr(),-7);
+  const last7workouts = workouts.filter(w => w.date >= last7date).length;
+
+  el.innerHTML = `
+    <div class="stat-card"><div class="stat-val">${avgSteps7 != null ? avgSteps7.toLocaleString() : '—'}</div><div class="stat-lbl">Avg steps (7d)</div></div>
+    <div class="stat-card"><div class="stat-val">${maxSteps != null ? maxSteps.toLocaleString() : '—'}</div><div class="stat-lbl">Best day</div></div>
+    <div class="stat-card"><div class="stat-val">${totalWorkouts}</div><div class="stat-lbl">Workouts total</div></div>
+    <div class="stat-card"><div class="stat-val">${last7workouts}</div><div class="stat-lbl">Workouts (7d)</div></div>`;
+
+  // Steps chart
+  const cs = document.getElementById('steps-chart-section');
+  const canvas = document.getElementById('steps-chart');
+  if (!canvas || !cs) return;
+
+  const last14 = getLastNDaysActivity(14);
+  const hasData = last14.some(d => d.steps != null);
+  cs.style.display = hasData ? '' : 'none';
+  if (!hasData) return;
+
+  if (stepsChart) { stepsChart.destroy(); stepsChart = null; }
+
+  stepsChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: last14.map(d => {
+        const dd = new Date(d.date+'T12:00:00');
+        return dd.toLocaleDateString('en-SE',{weekday:'short',day:'numeric'});
+      }),
+      datasets: [{
+        data: last14.map(d => d.steps || 0),
+        backgroundColor: last14.map(d => {
+          if (!d.steps) return 'rgba(255,255,255,0.04)';
+          if (d.steps >= 10000) return '#4ade8033';
+          if (d.steps >= 6000)  return '#fbbf2433';
+          return '#f8717133';
+        }),
+        borderColor: last14.map(d => {
+          if (!d.steps) return 'rgba(255,255,255,0.07)';
+          if (d.steps >= 10000) return '#4ade8088';
+          if (d.steps >= 6000)  return '#fbbf2488';
+          return '#f8717188';
+        }),
+        borderWidth: 1, borderRadius: 8, borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {display: false},
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          titleColor: '#fff', bodyColor: 'rgba(255,255,255,0.55)',
+          padding: 12, cornerRadius: 10,
+          titleFont: {family:'Inter',weight:'500'}, bodyFont: {family:'Inter'},
+          callbacks: {
+            title: items => {
+              const d = last14[items[0].dataIndex];
+              return new Date(d.date+'T12:00:00').toLocaleDateString('en-SE',{weekday:'long',day:'numeric',month:'short'});
+            },
+            label: c => {
+              const d = last14[c.dataIndex];
+              if (!d.steps) return 'No data';
+              return stepsContext(d.steps).text;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 0,
+          ticks: {callback: v => v >= 1000 ? (v/1000).toFixed(v%1000===0?0:1)+'k' : v,
+                  font:{size:11,family:'Inter'}, color:'rgba(255,255,255,0.18)'},
+          grid: {color:'rgba(255,255,255,0.04)'}, border: {color:'transparent'}
+        },
+        x: {
+          ticks: {font:{size:9,family:'Inter'}, maxRotation:45, color:'rgba(255,255,255,0.18)'},
+          grid: {display:false}, border: {color:'transparent'}
+        }
+      }
+    }
+  });
+}
+
+// ─── APPLE HEALTH IMPORT ──────────────────────────────────────
+
+const HK_TYPE_MAP = {
+  HKWorkoutActivityTypeRunning:                   'Running',
+  HKWorkoutActivityTypeWalking:                   'Walk',
+  HKWorkoutActivityTypeCycling:                   'Cycling',
+  HKWorkoutActivityTypeSwimming:                  'Swimming',
+  HKWorkoutActivityTypeSwimmingStyle:             'Swimming',
+  HKWorkoutActivityTypeBasketball:                'Basketball',
+  HKWorkoutActivityTypeTennis:                    'Tennis',
+  HKWorkoutActivityTypeSoccer:                    'Football',
+  HKWorkoutActivityTypeAmericanFootball:          'Football',
+  HKWorkoutActivityTypeYoga:                      'Yoga / Stretching',
+  HKWorkoutActivityTypePilates:                   'Yoga / Stretching',
+  HKWorkoutActivityTypeTraditionalStrengthTraining: 'Gym / Weights',
+  HKWorkoutActivityTypeFunctionalStrengthTraining:  'Gym / Weights',
+  HKWorkoutActivityTypeHighIntensityIntervalTraining: 'Gym / Weights',
+  HKWorkoutActivityTypeCrossTraining:             'Gym / Weights',
+  HKWorkoutActivityTypeMixedCardio:               'Gym / Weights',
+};
+
+function mapHKType(hkType) {
+  return HK_TYPE_MAP[hkType] || 'Other';
+}
+
+function parseHealthData(text) {
+  const stepsByDate = {};
+
+  // Match each StepCount record and extract startDate + value
+  // Records are single-line in Apple Health exports; &gt; in device attr won't fool [^>]
+  const recordRe = /<Record\b[^>]*type="HKQuantityTypeIdentifierStepCount"[^>]*\/?>/g;
+  let m;
+  while ((m = recordRe.exec(text)) !== null) {
+    const tag = m[0];
+    const dateM = /startDate="(\d{4}-\d{2}-\d{2})/.exec(tag);
+    const valM  = /\bvalue="(\d+)"/.exec(tag);
+    if (dateM && valM) {
+      const date = dateM[1];
+      stepsByDate[date] = (stepsByDate[date] || 0) + parseInt(valM[1]);
+    }
+  }
+
+  // Match workout elements
+  const workoutRe = /<Workout\b[^>]*>/g;
+  const hkWorkouts = [];
+  while ((m = workoutRe.exec(text)) !== null) {
+    const tag = m[0];
+    const typeM = /workoutActivityType="([^"]+)"/.exec(tag);
+    const dateM = /startDate="(\d{4}-\d{2}-\d{2})/.exec(tag);
+    const durM  = /\bduration="([^"]+)"/.exec(tag);
+    if (typeM && dateM && durM) {
+      const duration = Math.round(parseFloat(durM[1]));
+      if (duration >= 1) {
+        hkWorkouts.push({ date: dateM[1], type: mapHKType(typeM[1]), duration });
+      }
+    }
+  }
+
+  return { stepsByDate, hkWorkouts };
+}
+
+async function handleHealthImport(file) {
+  if (!file) return;
+  const statusEl  = document.getElementById('import-status');
+  const progressEl = document.getElementById('import-progress');
+  statusEl.textContent = 'Loading file…';
+  statusEl.className = 'import-status';
+  progressEl.textContent = '';
+
+  try {
+    if (typeof JSZip === 'undefined') throw new Error('JSZip library not loaded yet — refresh and try again.');
+
+    statusEl.textContent = 'Extracting zip…';
+    await new Promise(r => setTimeout(r, 30));
+    const zip = await JSZip.loadAsync(file);
+    const xmlEntry = zip.file('apple_health_export/export.xml');
+    if (!xmlEntry) throw new Error('No apple_health_export/export.xml found. Make sure you\'re uploading the zip straight from the Health app export.');
+
+    statusEl.textContent = 'Reading health data (large file — may take a moment)…';
+    await new Promise(r => setTimeout(r, 30));
+    const xmlText = await xmlEntry.async('string');
+
+    statusEl.textContent = 'Parsing step records and workouts…';
+    await new Promise(r => setTimeout(r, 30));
+    const { stepsByDate, hkWorkouts } = parseHealthData(xmlText);
+
+    const stepDates = Object.keys(stepsByDate);
+    statusEl.textContent = `Found ${stepDates.length.toLocaleString()} days of steps, ${hkWorkouts.length} workouts. Uploading…`;
+    await new Promise(r => setTimeout(r, 30));
+
+    // Upsert steps in batches (onConflict overwrites existing, keeping imported data)
+    const BATCH = 100;
+    const stepsRows = stepDates.map(date => ({ user_id: user.id, date, steps: stepsByDate[date] }));
+    for (let i = 0; i < stepsRows.length; i += BATCH) {
+      const { error } = await sb.from('activity_days')
+        .upsert(stepsRows.slice(i, i+BATCH), { onConflict: 'user_id,date' });
+      if (error) throw error;
+      progressEl.textContent = `Steps: ${Math.min(i+BATCH, stepsRows.length).toLocaleString()} / ${stepsRows.length.toLocaleString()}`;
+    }
+
+    // Import workouts — skip dates that already have manually logged workouts
+    const existingDates = new Set(workouts.map(w => w.date));
+    const newWRows = hkWorkouts
+      .filter(w => !existingDates.has(w.date))
+      .map(w => ({ user_id: user.id, date: w.date, type: w.type, duration: w.duration, intensity: null }));
+
+    progressEl.textContent = `Uploading ${newWRows.length} new workouts…`;
+    for (let i = 0; i < newWRows.length; i += BATCH) {
+      const { error } = await sb.from('workouts').insert(newWRows.slice(i, i+BATCH));
+      if (error) throw error;
+    }
+
+    await loadAll();
+    renderActivity();
+    renderStats();
+
+    statusEl.textContent = `Done! Imported ${stepsRows.length.toLocaleString()} days of steps and ${newWRows.length} workouts.`;
+    statusEl.className = 'import-status good';
+    progressEl.textContent = '';
+
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+    statusEl.className = 'import-status bad';
+    progressEl.textContent = '';
+  }
 }
 
 // ─── TAB SWITCHING ────────────────────────────────────────────
