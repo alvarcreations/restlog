@@ -53,6 +53,13 @@ async function bootApp() {
   document.getElementById('hstart').value = t;
   document.getElementById('hend').value   = t;
   document.getElementById('today-pill').textContent = fmtShort(t);
+  // Default log date to yesterday (the night that just ended)
+  document.getElementById('log-date').value = addDays(t, -1);
+  document.getElementById('log-date').addEventListener('change', () => { updatePreview(); updateLogNight(); });
+  // Keep modal title in sync when date is changed
+  document.getElementById('edit-date').addEventListener('change', function() {
+    document.getElementById('modal-title').textContent = fmtNight(this.value);
+  });
   await loadAll();
   renderBanner();
   renderSchedule();
@@ -61,6 +68,7 @@ async function bootApp() {
   renderStats();
   renderHolidays();
   renderBackups();
+  updateLogNight();
 }
 
 async function loadAll() {
@@ -231,6 +239,17 @@ function setRating(rowId, lblId, val, cb) {
   document.getElementById(lblId).textContent=val>0?val+'/10':'—';
 }
 
+// ─── LOG NIGHT DISPLAY ────────────────────────────────────────
+
+function updateLogNight() {
+  const d = document.getElementById('log-date').value;
+  const span = document.getElementById('log-night-fmt');
+  if(span) span.textContent = d ? fmtNight(d) : '';
+  const btn = document.getElementById('save-btn');
+  if(!btn) return;
+  btn.textContent = d ? 'Save entry for '+fmtNight(d) : 'Save entry';
+}
+
 // ─── LOG PREVIEW ──────────────────────────────────────────────
 
 function updatePreview() {
@@ -242,11 +261,11 @@ function updatePreview() {
   const tn=document.getElementById('timing-note');
   if(!h){lbl.textContent='';tn.textContent='';tn.className='timing-note';return;}
 
-  // Tonight = entry for today; morning = tomorrow
-  const tonight=todayStr();
-  const tomorrow=addDays(tonight,1);
-  const relaxed=isRelaxedMorning(tomorrow);
-  const sch=morningSchedule(tomorrow);
+  // Use the selected log date; morning = log date + 1
+  const nightDate=document.getElementById('log-date').value||addDays(todayStr(),-1);
+  const morning=addDays(nightDate,1);
+  const relaxed=isRelaxedMorning(morning);
+  const sch=morningSchedule(morning);
 
   if(h>=GOAL) lbl.textContent='Goal met ✓';
   else lbl.textContent=Math.round((GOAL-h)*10)/10+'h short of goal';
@@ -346,12 +365,12 @@ async function saveEntry() {
   const bed=document.getElementById('bed').value;
   const wake=document.getElementById('wake').value;
   const hrs=calcH(bed,wake); if(!hrs)return;
-  const tonight=todayStr();
-  const tomorrow=addDays(tonight,1);
-  const relaxed=isRelaxedMorning(tomorrow);
+  const nightDate=document.getElementById('log-date').value||addDays(todayStr(),-1);
+  const morning=addDays(nightDate,1);
+  const relaxed=isRelaxedMorning(morning);
   const ts=tScore(bed,wake,relaxed);
-  const existing=entries.find(e=>e.date===tonight);
-  const payload={user_id:user.id,date:tonight,bed_time:bed,wake_time:wake,
+  const existing=entries.find(e=>e.date===nightDate);
+  const payload={user_id:user.id,date:nightDate,bed_time:bed,wake_time:wake,
     hours_slept:hrs,quality:qv||null,energy:ev||null,timing_score:ts,relaxed};
   let res;
   if(existing) res=await sb.from('entries').update(payload).eq('id',existing.id).select().single();
@@ -365,7 +384,7 @@ async function saveEntry() {
   renderHistory(); renderStats();
   const btn=document.getElementById('save-btn');
   btn.textContent='Saved!'; btn.style.background='#22c55e';
-  setTimeout(()=>{btn.textContent="Save tonight's sleep";btn.style.background='';},1600);
+  setTimeout(()=>{btn.style.background=''; updateLogNight();},1600);
 }
 
 // ─── HISTORY ──────────────────────────────────────────────────
@@ -545,6 +564,7 @@ function renderHolidays() {
 
 function openEdit(date) {
   const e=entries.find(x=>x.date===date); if(!e)return;
+  document.getElementById('edit-entry-id').value=e.id;
   document.getElementById('edit-date').value=date;
   document.getElementById('edit-bed').value=e.bed;
   document.getElementById('edit-wake').value=e.wake;
@@ -559,26 +579,39 @@ function closeModal(ev) { if(ev.target===document.getElementById('edit-modal'))c
 function closeModalDirect() { document.getElementById('edit-modal').style.display='none'; }
 
 async function saveEdit() {
-  const date=document.getElementById('edit-date').value;
+  const entryId=document.getElementById('edit-entry-id').value;
+  const newDate=document.getElementById('edit-date').value;
   const bed=document.getElementById('edit-bed').value;
   const wake=document.getElementById('edit-wake').value;
   const hrs=calcH(bed,wake); if(!hrs)return;
-  const morning=addDays(date,1);
+  const e=entries.find(x=>x.id===entryId); if(!e)return;
+  // Check for date conflict if date was changed
+  if(newDate!==e.date){
+    const conflict=entries.find(x=>x.date===newDate&&x.id!==entryId);
+    if(conflict){
+      alert(`There's already an entry for ${fmtNight(newDate)}. Delete it first if you want to move this entry there.`);
+      return;
+    }
+  }
+  const morning=addDays(newDate,1);
   const relaxed=isRelaxedMorning(morning);
   const ts=tScore(bed,wake,relaxed);
-  const e=entries.find(x=>x.date===date); if(!e)return;
-  const{data}=await sb.from('entries').update({bed_time:bed,wake_time:wake,hours_slept:hrs,
-    quality:editQv||null,energy:editEv||null,timing_score:ts,relaxed}).eq('id',e.id).select().single();
-  if(data){const idx=entries.findIndex(x=>x.date===date);entries[idx]=dbToEntry(data);}
+  const{data}=await sb.from('entries').update({date:newDate,bed_time:bed,wake_time:wake,hours_slept:hrs,
+    quality:editQv||null,energy:editEv||null,timing_score:ts,relaxed}).eq('id',entryId).select().single();
+  if(data){
+    const idx=entries.findIndex(x=>x.id===entryId);
+    entries[idx]=dbToEntry(data);
+    entries.sort((a,b)=>b.date.localeCompare(a.date));
+  }
   closeModalDirect(); renderHistory(); renderStats();
 }
 
 async function deleteEntry() {
-  const date=document.getElementById('edit-date').value;
-  await autoBackup('before delete '+fmtNight(date));
-  const e=entries.find(x=>x.date===date); if(!e)return;
+  const entryId=document.getElementById('edit-entry-id').value;
+  const e=entries.find(x=>x.id===entryId); if(!e)return;
+  await autoBackup('before delete '+fmtNight(e.date));
   await sb.from('entries').delete().eq('id',e.id);
-  entries=entries.filter(x=>x.date!==date);
+  entries=entries.filter(x=>x.id!==entryId);
   closeModalDirect(); renderHistory(); renderStats();
 }
 

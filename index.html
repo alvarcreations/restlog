@@ -83,6 +83,11 @@
     <!-- LOG -->
     <div id="tab-log" class="tab-content active">
       <div class="log-card">
+        <div class="log-date-row">
+          <span class="log-date-label">Night</span>
+          <input type="date" id="log-date" class="log-date-input">
+          <span id="log-night-fmt" class="log-night-fmt"></span>
+        </div>
         <div class="time-row">
           <div class="time-field"><label>Bedtime</label><input type="time" id="bed" value="23:00"></div>
           <div class="time-arrow">→</div>
@@ -182,7 +187,11 @@
         <h3 id="modal-title">Edit entry</h3>
         <button class="modal-close" onclick="closeModalDirect()">×</button>
       </div>
-      <input type="hidden" id="edit-date">
+      <input type="hidden" id="edit-entry-id">
+      <div class="form-group edit-date-group">
+        <label>Entry date</label>
+        <input type="date" id="edit-date">
+      </div>
       <div class="time-row">
         <div class="time-field"><label>Bedtime</label><input type="time" id="edit-bed"></div>
         <div class="time-arrow">→</div>
