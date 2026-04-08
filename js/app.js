@@ -1104,8 +1104,7 @@ function mapHKType(hkType) {
 function parseHealthData(text) {
   const stepsByDate = {};
 
-  // Match each StepCount record and extract startDate + value
-  // Records are single-line in Apple Health exports; &gt; in device attr won't fool [^>]
+  // ── Step counts ──
   const recordRe = /<Record\b[^>]*type="HKQuantityTypeIdentifierStepCount"[^>]*\/?>/g;
   let m;
   while ((m = recordRe.exec(text)) !== null) {
@@ -1118,7 +1117,7 @@ function parseHealthData(text) {
     }
   }
 
-  // Match workout elements
+  // ── Workouts ──
   const workoutRe = /<Workout\b[^>]*>/g;
   const hkWorkouts = [];
   while ((m = workoutRe.exec(text)) !== null) {
@@ -1134,7 +1133,47 @@ function parseHealthData(text) {
     }
   }
 
-  return { stepsByDate, hkWorkouts };
+  // ── Sleep (InBed or any Asleep variant — skip Awake) ──
+  // Apple splits a night into multiple segments; group by night date and take earliest
+  // bed time + latest wake time. Night date = startDate if hour>=18, else startDate-1.
+  const sleepRe = /<Record\b[^>]*type="HKCategoryTypeIdentifierSleepAnalysis"[^>]*\/?>/g;
+  const byNight = {};
+  while ((m = sleepRe.exec(text)) !== null) {
+    const tag = m[0];
+    const valM = /\bvalue="([^"]+)"/.exec(tag);
+    if (!valM || valM[1] === 'HKCategoryValueSleepAnalysisAwake') continue;
+
+    // Extract local datetime directly from the string — ignore TZ offset intentionally
+    const startM = /startDate="(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/.exec(tag);
+    const endM   = /endDate="(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/.exec(tag);
+    if (!startM || !endM) continue;
+
+    const startDateStr = startM[1], startTime = startM[2];
+    const endDateStr   = endM[1],   endTime   = endM[2];
+
+    // Filter out tiny noise segments (< 5 min)
+    const startMs = new Date(startDateStr+'T'+startTime+':00').getTime();
+    const endMs   = new Date(endDateStr  +'T'+endTime  +':00').getTime();
+    if ((endMs - startMs) < 5 * 60000) continue;
+
+    // Assign to the night that started it: hour >= 18 → same date, else previous date
+    const startHour = parseInt(startTime);
+    const nightDate = startHour >= 18 ? startDateStr : addDays(startDateStr, -1);
+
+    if (!byNight[nightDate]) byNight[nightDate] = { minStart: startMs, maxEnd: endMs, bed: startTime, wake: endTime };
+    else {
+      if (startMs < byNight[nightDate].minStart) { byNight[nightDate].minStart = startMs; byNight[nightDate].bed = startTime; }
+      if (endMs   > byNight[nightDate].maxEnd)   { byNight[nightDate].maxEnd   = endMs;   byNight[nightDate].wake = endTime; }
+    }
+  }
+
+  const hkSleep = [];
+  for (const [date, n] of Object.entries(byNight)) {
+    const hrs = Math.round((n.maxEnd - n.minStart) / 36000) / 100;
+    if (hrs >= 1 && hrs <= 16) hkSleep.push({ date, bed: n.bed, wake: n.wake, hrs });
+  }
+
+  return { stepsByDate, hkWorkouts, hkSleep };
 }
 
 async function handleHealthImport(file) {
@@ -1158,16 +1197,17 @@ async function handleHealthImport(file) {
     await new Promise(r => setTimeout(r, 30));
     const xmlText = await xmlEntry.async('string');
 
-    statusEl.textContent = 'Parsing step records and workouts…';
+    statusEl.textContent = 'Parsing steps, workouts and sleep records…';
     await new Promise(r => setTimeout(r, 30));
-    const { stepsByDate, hkWorkouts } = parseHealthData(xmlText);
+    const { stepsByDate, hkWorkouts, hkSleep } = parseHealthData(xmlText);
 
     const stepDates = Object.keys(stepsByDate);
-    statusEl.textContent = `Found ${stepDates.length.toLocaleString()} days of steps, ${hkWorkouts.length} workouts. Uploading…`;
+    statusEl.textContent = `Found ${stepDates.length.toLocaleString()} days of steps, ${hkWorkouts.length} workouts, ${hkSleep.length} sleep nights. Uploading…`;
     await new Promise(r => setTimeout(r, 30));
 
-    // Upsert steps in batches (onConflict overwrites existing, keeping imported data)
     const BATCH = 100;
+
+    // ── Steps (upsert — Health data is authoritative for totals) ──
     const stepsRows = stepDates.map(date => ({ user_id: user.id, date, steps: stepsByDate[date] }));
     for (let i = 0; i < stepsRows.length; i += BATCH) {
       const { error } = await sb.from('activity_days')
@@ -1176,10 +1216,10 @@ async function handleHealthImport(file) {
       progressEl.textContent = `Steps: ${Math.min(i+BATCH, stepsRows.length).toLocaleString()} / ${stepsRows.length.toLocaleString()}`;
     }
 
-    // Import workouts — skip dates that already have manually logged workouts
-    const existingDates = new Set(workouts.map(w => w.date));
+    // ── Workouts — skip dates already manually logged ──
+    const existingWDates = new Set(workouts.map(w => w.date));
     const newWRows = hkWorkouts
-      .filter(w => !existingDates.has(w.date))
+      .filter(w => !existingWDates.has(w.date))
       .map(w => ({ user_id: user.id, date: w.date, type: w.type, duration: w.duration, intensity: null }));
 
     progressEl.textContent = `Uploading ${newWRows.length} new workouts…`;
@@ -1188,11 +1228,33 @@ async function handleHealthImport(file) {
       if (error) throw error;
     }
 
-    await loadAll();
-    renderActivity();
-    renderStats();
+    // ── Sleep — skip nights already manually logged ──
+    const existingSleepDates = new Set(entries.map(e => e.date));
+    const newSleepRows = hkSleep
+      .filter(e => !existingSleepDates.has(e.date))
+      .map(e => {
+        const morning = addDays(e.date, 1);
+        const relaxed = isRelaxedMorning(morning);
+        const ts = tScore(e.bed, e.wake, relaxed);
+        return {
+          user_id: user.id, date: e.date,
+          bed_time: e.bed, wake_time: e.wake,
+          hours_slept: e.hrs,
+          quality: null, energy: null,
+          timing_score: ts, relaxed
+        };
+      });
 
-    statusEl.textContent = `Done! Imported ${stepsRows.length.toLocaleString()} days of steps and ${newWRows.length} workouts.`;
+    progressEl.textContent = `Uploading ${newSleepRows.length} sleep nights…`;
+    for (let i = 0; i < newSleepRows.length; i += BATCH) {
+      const { error } = await sb.from('entries').insert(newSleepRows.slice(i, i+BATCH));
+      if (error) throw error;
+    }
+
+    await loadAll();
+    renderHistory(); renderStats(); renderActivity();
+
+    statusEl.textContent = `Done! Imported ${stepsRows.length.toLocaleString()} days of steps, ${newWRows.length} workouts, and ${newSleepRows.length} sleep nights.`;
     statusEl.className = 'import-status good';
     progressEl.textContent = '';
 
